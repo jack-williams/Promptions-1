@@ -44,17 +44,35 @@ export function openaiProxy(options = {}) {
     /** @type {ProxySettings} */
     let settings = { upstream: DEFAULT_UPSTREAM, mode: "openai" };
 
+    /**
+     * Names of `VITE_`-prefixed variables that look like credentials. Vite
+     * serves the whole `import.meta.env` object to the browser in dev, so any
+     * such variable is exposed regardless of whether code references it.
+     * @type {string[]}
+     */
+    let exposedSecretNames = [];
+
     /** @type {import("vite").Connect.NextHandleFunction} */
     const handler = (req, res) => {
         void forward(req, res, settings);
     };
 
     /** @param {(message: string) => void} warn */
-    const warnIfUnconfigured = (warn) => {
+    const warnAboutConfig = (warn) => {
         if (!settings.apiKey) {
             warn(
                 `[openai-proxy] OPENAI_API_KEY is not set. Requests to ${proxyPath} will fail. ` +
                     `Copy .env.example to .env and set OPENAI_API_KEY (note: no VITE_ prefix).`,
+            );
+        }
+        if (exposedSecretNames.length > 0) {
+            warn(
+                `[openai-proxy] SECURITY: ${exposedSecretNames.join(", ")} ${
+                    exposedSecretNames.length === 1 ? "is" : "are"
+                } exposed to the browser. ` +
+                    `Vite serves every VITE_-prefixed variable to client code, so this value is readable by anyone ` +
+                    `loading the app. It is left over from a version of this app that ran the API key in the browser. ` +
+                    `Remove it from your .env — the proxy reads OPENAI_API_KEY instead — and rotate the credential.`,
             );
         }
     };
@@ -67,6 +85,21 @@ export function openaiProxy(options = {}) {
             const env = loadEnv(mode, envDir, "");
             const upstream = env.OPENAI_BASE_URL?.trim();
             const style = env.OPENAI_API_STYLE?.trim().toLowerCase();
+
+            exposedSecretNames = Object.keys(env).filter(
+                (name) => name.startsWith("VITE_") && /KEY|SECRET|TOKEN|PASSWORD/i.test(name) && env[name],
+            );
+
+            // The variable this plugin exists to eliminate. Anything still set
+            // here is a live credential being served to the browser, so refuse
+            // to start rather than let it look fixed.
+            if (env.VITE_OPENAI_API_KEY) {
+                throw new Error(
+                    `[openai-proxy] VITE_OPENAI_API_KEY is set in your environment. Vite serves every VITE_-prefixed ` +
+                        `variable to client code, so this credential is readable by anyone loading the app. ` +
+                        `Rename it to OPENAI_API_KEY (no VITE_ prefix) and rotate the key.`,
+                );
+            }
 
             settings = {
                 apiKey: env.OPENAI_API_KEY?.trim() || undefined,
@@ -82,17 +115,18 @@ export function openaiProxy(options = {}) {
                     "import.meta.env.VITE_OPENAI_PROXY_MODE": JSON.stringify(settings.mode),
                     "import.meta.env.VITE_OPENAI_API_VERSION": JSON.stringify(env.OPENAI_API_VERSION?.trim() ?? ""),
                     "import.meta.env.VITE_OPENAI_MODEL": JSON.stringify(env.OPENAI_MODEL?.trim() ?? ""),
+                    "import.meta.env.VITE_OPENAI_IMAGE_MODEL": JSON.stringify(env.OPENAI_IMAGE_MODEL?.trim() ?? ""),
                 },
             };
         },
 
         configureServer(server) {
-            warnIfUnconfigured((message) => server.config.logger.warn(message));
+            warnAboutConfig((message) => server.config.logger.warn(message));
             server.middlewares.use(proxyPath, handler);
         },
 
         configurePreviewServer(server) {
-            warnIfUnconfigured((message) => server.config.logger.warn(message));
+            warnAboutConfig((message) => server.config.logger.warn(message));
             server.middlewares.use(proxyPath, handler);
         },
     };
@@ -107,11 +141,20 @@ async function forward(req, res, settings) {
     const apiKey = settings.apiKey;
 
     if (!apiKey) {
-        sendJson(res, 500, {
-            error: {
-                message: "OpenAI proxy is not configured. Set OPENAI_API_KEY (without the VITE_ prefix) in your .env.",
+        // 500 is accurate (the server is misconfigured), but the OpenAI SDK
+        // retries any 5xx unless told not to, which would turn a config typo
+        // into three requests and several seconds of backoff.
+        sendJson(
+            res,
+            500,
+            {
+                error: {
+                    message:
+                        "OpenAI proxy is not configured. Set OPENAI_API_KEY (without the VITE_ prefix) in your .env.",
+                },
             },
-        });
+            { "x-should-retry": "false" },
+        );
         return;
     }
 
@@ -189,13 +232,17 @@ async function readBody(req) {
  * @param {import("node:http").ServerResponse} res
  * @param {number} status
  * @param {unknown} payload
+ * @param {Record<string, string>} [headers]
  */
-function sendJson(res, status, payload) {
+function sendJson(res, status, payload, headers = {}) {
     if (res.headersSent) {
         res.destroy();
         return;
     }
     res.statusCode = status;
     res.setHeader("content-type", "application/json");
+    for (const [name, value] of Object.entries(headers)) {
+        res.setHeader(name, value);
+    }
     res.end(JSON.stringify(payload));
 }

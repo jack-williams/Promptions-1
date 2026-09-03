@@ -58,16 +58,25 @@ browser otherwise, but there is no longer a real credential to leak.
 
 ## Environment variables
 
-| Variable             | Scope  | Description                                                              |
-| -------------------- | ------ | ------------------------------------------------------------------------ |
-| `OPENAI_API_KEY`     | server | Required. Never exposed to the client.                                   |
-| `OPENAI_BASE_URL`    | server | Optional. Azure/custom endpoint. When set, the proxy uses Azure headers. |
-| `OPENAI_API_VERSION` | client | Optional. Required for Azure. Not secret.                                |
-| `OPENAI_MODEL`       | client | Optional chat model override. Not secret.                                |
+| Variable             | Scope  | Description                                                                              |
+| -------------------- | ------ | ---------------------------------------------------------------------------------------- |
+| `OPENAI_API_KEY`     | server | Required. Never exposed to the client.                                                   |
+| `OPENAI_BASE_URL`    | server | Optional. Azure/custom endpoint. When set, the proxy uses Azure headers.                 |
+| `OPENAI_API_STYLE`   | server | Optional. `openai` or `azure`. Overrides the inference above.                            |
+| `OPENAI_API_VERSION` | client | Optional. Required for Azure. Not secret.                                                |
+| `OPENAI_MODEL`       | client | Optional chat model override. Not secret.                                                |
+| `OPENAI_IMAGE_MODEL` | client | Optional image model override. Set this to your Azure image deployment name. Not secret. |
 
 The plugin exposes the non-secret values to client code as
 `import.meta.env.VITE_OPENAI_PROXY_PATH`, `VITE_OPENAI_PROXY_MODE`,
-`VITE_OPENAI_API_VERSION` and `VITE_OPENAI_MODEL`.
+`VITE_OPENAI_API_VERSION`, `VITE_OPENAI_MODEL` and `VITE_OPENAI_IMAGE_MODEL`.
+
+Startup **fails** if `VITE_OPENAI_API_KEY` is set, and warns if any other
+`VITE_`-prefixed variable looks like a credential (`KEY`, `SECRET`, `TOKEN`,
+`PASSWORD`). Vite serves the whole `import.meta.env` object to the browser in
+dev, so such a variable is exposed to any page visitor even when no code
+references it — most often a `VITE_OPENAI_API_KEY` left over from before this
+proxy existed.
 
 ## Request handling
 

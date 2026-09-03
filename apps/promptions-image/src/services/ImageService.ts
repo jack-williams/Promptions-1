@@ -10,6 +10,7 @@ const PROXY_PLACEHOLDER_API_KEY = "injected-by-proxy";
 export class ImageService {
     private client: OpenAI;
     private chatModel: string;
+    private imageModel?: string;
 
     constructor() {
         // The API key is never available to the browser. Requests go to the
@@ -18,6 +19,8 @@ export class ImageService {
         const proxyUrl = `${window.location.origin}${import.meta.env.VITE_OPENAI_PROXY_PATH || "/api/openai"}`;
         const apiVersion = import.meta.env.VITE_OPENAI_API_VERSION;
         this.chatModel = import.meta.env.VITE_OPENAI_MODEL || "gpt-5.4-nano";
+        // Azure routes by deployment name, which need not match the model ID.
+        this.imageModel = import.meta.env.VITE_OPENAI_IMAGE_MODEL || undefined;
 
         this.client =
             import.meta.env.VITE_OPENAI_PROXY_MODE === "azure"
@@ -40,7 +43,7 @@ export class ImageService {
 
             const response = await this.client.images.generate(
                 {
-                    model: params.kind,
+                    model: this.imageModel ?? params.kind,
                     prompt: params.prompt,
                     size: params.size,
                     quality: params.quality,

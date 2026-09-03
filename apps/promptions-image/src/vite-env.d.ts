@@ -7,6 +7,7 @@ interface ImportMetaEnv {
     readonly VITE_OPENAI_PROXY_MODE: "azure" | "openai";
     readonly VITE_OPENAI_API_VERSION?: string;
     readonly VITE_OPENAI_MODEL?: string;
+    readonly VITE_OPENAI_IMAGE_MODEL?: string;
     // more env variables...
 }
 

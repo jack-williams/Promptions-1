@@ -56,6 +56,8 @@ OPENAI_MODEL=your_chat_deployment_name
 
 These variables are deliberately **not** prefixed with `VITE_`, so Vite cannot inline them into the browser bundle. The dev/preview server proxies requests at `/api/openai` and attaches the credential server-side.
 
+If you used an earlier version of this app, delete `VITE_OPENAI_API_KEY` from your `.env` and rotate that key — Vite serves every `VITE_`-prefixed variable to client code, so it remains exposed to the browser even though no code reads it now.
+
 When `OPENAI_BASE_URL` is set, the app uses Azure OpenAI conventions; otherwise it uses the standard OpenAI conventions. Set `OPENAI_API_STYLE=openai` to use a custom endpoint with standard OpenAI conventions.
 
 ### Development

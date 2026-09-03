@@ -101,6 +101,8 @@ The apps can call either the **standard OpenAI API** or your own **Azure OpenAI*
 
 > **The API key stays on the server.** These variables are deliberately **not** prefixed with `VITE_`, so Vite cannot inline them into the browser bundle. The dev/preview server proxies requests to your provider at `/api/openai` and attaches the credential server-side. See [`packages/promptions-openai-proxy`](packages/promptions-openai-proxy/README.md).
 
+> **Upgrading from an earlier version?** Delete `VITE_OPENAI_API_KEY` from your `.env` files and rotate that key. Vite serves every `VITE_`-prefixed variable to client code, so a key left there is still readable by anyone loading the app even though no code references it. The dev server warns if it finds one.
+
 Option A — .env files (recommended for local development):
 
 **Standard OpenAI**
@@ -157,10 +159,11 @@ Both apps read these variables from their respective `.env` files. They are read
 | `OPENAI_BASE_URL`    | Custom endpoint. Set this to use Azure OpenAI (e.g. `https://your-resource.openai.azure.com`) or another OpenAI-compatible service. | _(unset)_      |
 | `OPENAI_API_VERSION` | API version. **Required** when `OPENAI_BASE_URL` points at Azure OpenAI (e.g. `2024-12-01-preview`).                                | _(unset)_      |
 | `OPENAI_API_STYLE`   | `openai` or `azure`. Overrides how the credential is sent, for OpenAI-compatible backends that need a custom `OPENAI_BASE_URL`.     | inferred       |
+| `OPENAI_IMAGE_MODEL` | Image model used by the image app. On Azure OpenAI this is the image **deployment name**, which need not match the model id.        | `gpt-image-1`  |
 
 When `OPENAI_BASE_URL` is set, the apps use Azure OpenAI conventions (`api-key` header, deployment-based URLs); otherwise they use the standard OpenAI conventions (`Authorization: Bearer`). Set `OPENAI_API_STYLE=openai` to use a custom endpoint with standard OpenAI conventions.
 
-> **Model compatibility:** The chat reference app uses `OPENAI_MODEL`, defaulting to `gpt-5.4-nano`. On Azure OpenAI, make sure the deployment named in `OPENAI_MODEL` targets a chat-completions-compatible model.
+> **Model compatibility:** The chat reference app uses `OPENAI_MODEL`, defaulting to `gpt-5.4-nano`. On Azure OpenAI, make sure the deployment named in `OPENAI_MODEL` targets a chat-completions-compatible model, and set `OPENAI_IMAGE_MODEL` to your image deployment name — the image app otherwise requests the model id `gpt-image-1`, which Azure resolves as a deployment name.
 
 Start the dev servers:
 
