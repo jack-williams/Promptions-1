@@ -45,7 +45,6 @@ export class ImageService {
                     size: params.size,
                     quality: params.quality,
                     n: params.n || 1,
-                    response_format: "b64_json",
                 },
                 {
                     signal: options?.signal,
