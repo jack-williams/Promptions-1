@@ -3,6 +3,11 @@ import type { Plugin } from "vite";
 export interface OpenAIProxyOptions {
     /** Path the browser calls. Defaults to `/api/openai`. */
     path?: string;
+    /**
+     * Largest request body forwarded upstream, in bytes. Defaults to 10 MiB.
+     * Larger requests are rejected with 413.
+     */
+    maxBodyBytes?: number;
 }
 
 /**

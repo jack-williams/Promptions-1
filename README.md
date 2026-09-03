@@ -101,7 +101,7 @@ The apps can call either the **standard OpenAI API** or your own **Azure OpenAI*
 
 > **The API key stays on the server.** These variables are deliberately **not** prefixed with `VITE_`, so Vite cannot inline them into the browser bundle. The dev/preview server proxies requests to your provider at `/api/openai` and attaches the credential server-side. See [`packages/promptions-openai-proxy`](packages/promptions-openai-proxy/README.md).
 
-> **Upgrading from an earlier version?** Delete `VITE_OPENAI_API_KEY` from your `.env` files and rotate that key. Vite serves every `VITE_`-prefixed variable to client code, so a key left there is still readable by anyone loading the app even though no code references it. The dev server warns if it finds one.
+> **Upgrading from an earlier version?** Delete `VITE_OPENAI_API_KEY` from your `.env` files and rotate that key. Vite serves every `VITE_`-prefixed variable to client code, so a key left there is still readable by anyone loading the app even though no code references it. **The dev server refuses to start while that variable is set**, so you cannot miss this step.
 
 Option A — .env files (recommended for local development):
 
@@ -150,7 +150,7 @@ $env:OPENAI_API_KEY="your_openai_api_key_here" ; yarn workspace @promptions/prom
 
 #### Configuration reference
 
-Both apps read these variables from their respective `.env` files. They are read by the dev/preview server only and are never sent to the browser (except `OPENAI_API_VERSION` and `OPENAI_MODEL`, which are not secret).
+Both apps read these variables from their respective `.env` files. They are read by the dev/preview server only. `OPENAI_API_KEY` and `OPENAI_BASE_URL` never reach the browser; `OPENAI_API_VERSION`, `OPENAI_MODEL` and `OPENAI_IMAGE_MODEL` are injected into client code, and are not secret.
 
 | Variable             | Description                                                                                                                         | Default        |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------------- |
