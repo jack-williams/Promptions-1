@@ -1,34 +1,37 @@
 import OpenAI, { AzureOpenAI } from "openai";
 import { ImageGenerationParams, GeneratedImage } from "../types";
 
+/**
+ * The OpenAI SDK requires a non-empty key. The proxy replaces it with the real
+ * credential, so this literal is all the browser ever sees.
+ */
+const PROXY_PLACEHOLDER_API_KEY = "injected-by-proxy";
+
 export class ImageService {
     private client: OpenAI;
     private chatModel: string;
 
     constructor() {
-        const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-
-        if (!apiKey) {
-            throw new Error(
-                "OpenAI API key is required. Please set VITE_OPENAI_API_KEY in your environment variables.",
-            );
-        }
-
-        const baseURL = import.meta.env.VITE_OPENAI_BASE_URL;
+        // The API key is never available to the browser. Requests go to the
+        // same-origin proxy path, which injects the real credential
+        // server-side (see @promptions/promptions-openai-proxy).
+        const proxyUrl = `${window.location.origin}${import.meta.env.VITE_OPENAI_PROXY_PATH || "/api/openai"}`;
         const apiVersion = import.meta.env.VITE_OPENAI_API_VERSION;
         this.chatModel = import.meta.env.VITE_OPENAI_MODEL || "gpt-5.4-nano";
 
-        this.client = baseURL
-            ? new AzureOpenAI({
-                  apiKey,
-                  endpoint: baseURL,
-                  apiVersion,
-                  dangerouslyAllowBrowser: true, // Only for demo purposes - use a backend in production
-              })
-            : new OpenAI({
-                  apiKey,
-                  dangerouslyAllowBrowser: true, // Only for demo purposes - use a backend in production
-              });
+        this.client =
+            import.meta.env.VITE_OPENAI_PROXY_MODE === "azure"
+                ? new AzureOpenAI({
+                      endpoint: proxyUrl,
+                      apiVersion,
+                      apiKey: PROXY_PLACEHOLDER_API_KEY,
+                      dangerouslyAllowBrowser: true,
+                  })
+                : new OpenAI({
+                      baseURL: `${proxyUrl}/v1`,
+                      apiKey: PROXY_PLACEHOLDER_API_KEY,
+                      dangerouslyAllowBrowser: true,
+                  });
     }
 
     async generateImage(params: ImageGenerationParams, options?: { signal?: AbortSignal }): Promise<GeneratedImage[]> {
